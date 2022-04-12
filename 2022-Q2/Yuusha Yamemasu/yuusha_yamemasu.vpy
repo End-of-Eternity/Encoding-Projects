@@ -4,6 +4,7 @@ import vapoursynth as vs
 import EoEfunc as eoe
 import lvsfunc as lvf
 import kagefunc as kgf
+from vsTAAmbk import TAAmbk as taa
 from vsutil import get_y, split, join
 from vardefunc.deband import dumb3kdb
 
@@ -37,17 +38,24 @@ src = core.std.ShufflePlanes(
     [core.average.Mean([get_y(src_hevc), get_y(src_avc)]), src_hevc], [0, 1, 2], vs.YUV
 )
 
-cmde = eoe.dn.CMDE(src, tr=3, thSAD=100)
+cmde = eoe.dn.CMDE(src, tr=2, thSAD=100)
 dark_mask = core.adg.Mask(cmde.std.PlaneStats(), 24)
 cmde = core.std.MaskedMerge(cmde, src, dark_mask)
 
 sloc = [0, 0.25, 0.5, 1, 0.55, 2, 0.6, 4, 0.75, 16, 1, 16]
-dft = core.dfttest.DFTTest(cmde, planes=[0], ssx=sloc, ssy=sloc, sigma=3)
-bm3d = eoe.dn.BM3D(dft, [0, 2], 0, "fast")
+dft = core.dfttest.DFTTest(cmde, planes=[0], tbsize=1, slocation=sloc)
+bm3d = eoe.dn.BM3D(dft, [1, 2], 0, "np")
 
-aa = join([lvf.aa.nnedi3(plane) for plane in split(bm3d)])
-aa = eoe.misc.ContraSharpening(aa, src)
-aa = core.std.Expr([aa, bm3d], ["x y min", "y"])
+planes = split(bm3d)
+# can't believe I'm unironically using SangNom
+planes[0] = lvf.aa.clamp_aa(
+    planes[0], lvf.aa.nnedi3(planes[0], opencl=True), taa(planes[0], -3, opencl=True)
+)
+# Use this if you don't care about performance and want better quality than SangNom
+# planes[0] = lvf.aa.nneedi3_clamp(planes[0], opencl=True)
+planes[1] = lvf.aa.nnedi3(planes[1], opencl=True)
+planes[2] = lvf.aa.nnedi3(planes[2], opencl=True)
+aa = join(planes)
 
 deband = dumb3kdb(aa, 16, [30, 24, 24], [16, 4])
 
@@ -65,4 +73,3 @@ if debug:
     debug_output(bm3d, "bm3d")
     debug_output(aa, "aa")
     debug_output(grain, "grain")
-    # debug_output(src, "src", fft=True)
