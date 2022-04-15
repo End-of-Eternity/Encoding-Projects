@@ -30,7 +30,7 @@ ep = ep.group(1)
 
 cr = core.lsmas.LWLibavSource(src_path)
 funi = core.lsmas.LWLibavSource(
-    r"src/Date A Live - S04E{ep} - 1080p WEB H.264 -NanDesuKa (FUNi).mkv"
+    rf"src/Date A Live - S04E{ep} - 1080p WEB H.264 -NanDesuKa (FUNi).mkv"
 )
 funi = funi[240:]
 cr = cr[: funi.num_frames]
